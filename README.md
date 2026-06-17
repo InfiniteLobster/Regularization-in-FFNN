@@ -25,7 +25,7 @@ git clone https://github.com/InfiniteLobster/Regularization-in-FFNN
 
 ## Author
 
-[InfiniteLobster](https://github.com/InfiniteLobster), [Manuelidk](https://github.com/Manuelidk) and ...
+[InfiniteLobster](https://github.com/InfiniteLobster), [Manuelidk](https://github.com/Manuelidk) and [MikelGarciaData](https://github.com/MikelGarciaData)
 
 ## Version
 
