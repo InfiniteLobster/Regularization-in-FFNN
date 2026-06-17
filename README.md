@@ -1,6 +1,6 @@
 # Regularization-in-FFNN
 
-To Do
+This is the repository for 'Regularization in Feed Forward Neural Network (FFNN)' project for [22125 Algorithms in bioinformatics](https://kurser.dtu.dk/course/22125) course from [DTU](https://www.dtu.dk/).
 
 Hydra and wandb are used for hyperparameters sweep. Uv is used as package manager.
 
@@ -11,7 +11,7 @@ In the creation of project structure this [cookiecuter template](https://github.
 ## Installation
 
 ```bash
-git clone <link to repo>
+git clone https://github.com/InfiniteLobster/Regularization-in-FFNN
 ```
 ## Usage
 
@@ -25,7 +25,7 @@ git clone <link to repo>
 
 ## Author
 
-InfiniteLobster
+[InfiniteLobster](https://github.com/InfiniteLobster), [Manuelidk](https://github.com/Manuelidk) and ...
 
 ## Version
 
