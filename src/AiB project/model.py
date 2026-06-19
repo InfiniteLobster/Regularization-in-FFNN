@@ -8,7 +8,10 @@ class FFNN:
     #self.biases_list: [np.ndarray]
     #self.activ_list: [callable] -list of activation functions for each layer (except output layer)
     #self.dactiv_list: [callable] -list of derivatives of activation functions for each layer 
-    def __init__(self, input_size: int, output_size: int, hidden_info: list, activ_func: list, method_init: callable):
+    def __init__(self, input_size: int, output_size: int, hidden_info: list, activ_info: list, method_init: callable):
+        #Declaration of lists for weights and biases of each layer
+        self.weights_list = []
+        self.biases_list = []
         #initialization of parameters for each layer (weights and biases) 
         for i in range(len(hidden_info) + 1):
             if i == 0:#first layer (input layer)
@@ -27,9 +30,11 @@ class FFNN:
             self.weights_list.append(weights)
             self.biases_list.append(biases)
         #passing activation functions list to class variable for use in forward pass
-        self.activ_list = activ_func[0]
-        self.dactiv_list = activ_func[1]
+        self.activ_list = activ_info[0]
+        self.dactiv_list = activ_info[1]
     def forward(self, X: np.ndarray) -> np.ndarray:
+        #
+        a = X
         #forward pass through the network using weights, biases and activation functions
         for i in range(len(self.weights_list)):
             #
@@ -37,7 +42,7 @@ class FFNN:
             biases = self.biases_list[i]
             activ_func = self.activ_list[i] 
             #linear transformation
-            z =  X @ weights.T + biases
+            z =  a @ weights.T + biases
             #activation function (except for output layer)
             a = activ_func(z)
         return a
