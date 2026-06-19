@@ -33,7 +33,7 @@ class FFNN:
         self.activ_list = activ_info[0]
         self.dactiv_list = activ_info[1]
     def forward(self, X: np.ndarray) -> np.ndarray:
-        #
+        #creating list for storing outputs of each layer during forward pass (including input)
         A = []
         #passing input to the mult variable for forward pass
         A.append(X)
@@ -47,18 +47,19 @@ class FFNN:
             z =  A[-1] @ weights.T + biases
             #activation function (except for output layer)
             a = activ_func(z)
-            #
+            #adding output of current layer to the list for use in backward pass
             A.append(a)
-        #
+        #returning output
         return A
     def backward(self, A: list, loss_derivative: np.ndarray, update_func: callable, learning_rate: float) -> None:
-        #
+        #calculating delta for output layer
         delta = loss_derivative * self.dactiv_list[-1](A[-1])
-        #
+        #iterating through layers in reverse order for backpropagation
         for i in reversed(range(len(self.weights_list))):
-            #getting weights and activation function for current layer from the instance variables
+            #getting weights and activation function derivative for current layer from the instance variables
             weights = self.weights_list[i]
             dactiv_func = self.dactiv_list[i]
+            #getting activation output for current layer from the forward pass results
             a = A[i]
             #calculating gradients for weights and biases
             grad_weights = delta.T @ a
@@ -71,8 +72,6 @@ class FFNN:
                 next_delta = None
                 next_delta = (delta @ weights) * dactiv_func(a)
                 delta = next_delta
-        
-
 #--------------------Functions--------------------#
 #Basic model building handler, i.e. model selection of implemented architectures and their configuration.
 def build_model():
