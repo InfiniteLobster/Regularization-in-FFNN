@@ -33,11 +33,11 @@ class FFNN:
         self.activ_list = activ_info[0]
         self.dactiv_list = activ_info[1]
     def forward(self, X: np.ndarray) -> np.ndarray:
-        #
+        #passing input to the mult variable for forward pass
         a = X
         #forward pass through the network using weights, biases and activation functions
         for i in range(len(self.weights_list)):
-            #
+            #getting weights, biases and activation function for current layer from the instance variables
             weights = self.weights_list[i]
             biases = self.biases_list[i]
             activ_func = self.activ_list[i] 
