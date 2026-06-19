@@ -4,17 +4,18 @@ import numpy as np
 #
 #
 def sigmoid(a: np.ndarray) -> np.ndarray:
-    # 
-    sig = np.where(a >= 0,
-                    1 / (1 + np.exp(-a)),
-                    np.exp(a) / (1 + np.exp(a))
-                    )
+    #
+    values = np.asarray(a, dtype=float)
+    sig = np.empty_like(values)
+    positive = values >= 0
+
+    sig[positive] = 1 / (1 + np.exp(-values[positive]))
+    exp_values = np.exp(values[~positive])
+    sig[~positive] = exp_values / (1 + exp_values)
     #
     return sig
 def sigmoid_derivative(a: np.ndarray) -> np.ndarray:
-    sig = sigmoid(a)
-    #
-    sig_deriv = sig * (1 - sig)
+    sig_deriv = a * (1 - a)
     #
     return sig_deriv
 #

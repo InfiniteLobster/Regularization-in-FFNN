@@ -33,8 +33,10 @@ class FFNN:
         self.activ_list = activ_info[0]
         self.dactiv_list = activ_info[1]
     def forward(self, X: np.ndarray) -> np.ndarray:
+        #
+        A = []
         #passing input to the mult variable for forward pass
-        a = X
+        A.append(X)
         #forward pass through the network using weights, biases and activation functions
         for i in range(len(self.weights_list)):
             #getting weights, biases and activation function for current layer from the instance variables
@@ -42,13 +44,34 @@ class FFNN:
             biases = self.biases_list[i]
             activ_func = self.activ_list[i] 
             #linear transformation
-            z =  a @ weights.T + biases
+            z =  A[-1] @ weights.T + biases
             #activation function (except for output layer)
             a = activ_func(z)
-        return a
-    def backward(self, X: np.ndarray, y: np.ndarray) -> None:
-        #backward pass through the network using derivatives of activation functions and weights for calculating gradients for each layer
-        raise NotImplementedError("Implement backward pass")
+            #
+            A.append(a)
+        #
+        return A
+    def backward(self, A: list, loss_derivative: np.ndarray, update_func: callable, learning_rate: float) -> None:
+        #
+        delta = loss_derivative * self.dactiv_list[-1](A[-1])
+        #
+        for i in reversed(range(len(self.weights_list))):
+            #getting weights and activation function for current layer from the instance variables
+            weights = self.weights_list[i]
+            dactiv_func = self.dactiv_list[i]
+            a = A[i]
+            #calculating gradients for weights and biases
+            grad_weights = delta.T @ a
+            grad_biases = np.sum(delta, axis=0, keepdims=True)
+            #updating weights and biases using gradients (here we can add learning rate and regularization)
+            self.weights_list[i] -= update_func(grad_weights, learning_rate)
+            self.biases_list[i] -= update_func(grad_biases, learning_rate)
+            #calculating delta for previous layer (except for input layer)
+            if i > 0:
+                next_delta = None
+                next_delta = (delta @ weights) * dactiv_func(a)
+                delta = next_delta
+        
 
 #--------------------Functions--------------------#
 #Basic model building handler, i.e. model selection of implemented architectures and their configuration.
