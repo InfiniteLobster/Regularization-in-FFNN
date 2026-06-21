@@ -17,3 +17,4 @@ wheels/
 #ignoring sweep folders
 /wandb/
 /outputs/
+/multirun/

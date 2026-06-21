@@ -1,4 +1,4 @@
 seed_split: 42
-log_freq: 100
+log_freq: 1
 fold_out: 5
 fold_in: 5

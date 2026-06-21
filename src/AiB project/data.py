@@ -65,7 +65,7 @@ class DataLoader:
             batch = [self.dataset[i] for i in batch_idxs]
             yield batch
 #
-def load_data(root="data/"):
+def load_data(root="data/dataset"):
     #
     files = list_non_dat_files(root)
     #

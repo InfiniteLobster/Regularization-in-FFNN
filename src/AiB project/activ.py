@@ -3,9 +3,9 @@ import numpy as np
 #--------------------Functions--------------------#
 #Here are the activation functions and their derivatives used by model layers
 #sigmopid activation function
-def sigmoid(a: np.ndarray) -> np.ndarray:
+def sigmoid(z: np.ndarray) -> np.ndarray:
     #creating array for storing sigmoid values
-    values = np.asarray(a, dtype=float)
+    values = np.asarray(z, dtype=float)
     sig = np.empty_like(values)
     #getting boolean array for values >= 0 for numerical stability in sigmoid calculation
     positive = values >= 0
@@ -23,9 +23,9 @@ def sigmoid_derivative(a: np.ndarray) -> np.ndarray:
     #returning output
     return sig_deriv
 #Relu activation function
-def relu(a: np.ndarray) -> np.ndarray:
+def relu(z: np.ndarray) -> np.ndarray:
     #creating array for storing Relu values
-    rel = np.maximum(0, a)
+    rel = np.maximum(0, z)
     #returning output
     return rel
 #derivative of Relu activation function
