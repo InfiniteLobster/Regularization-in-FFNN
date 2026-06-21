@@ -40,7 +40,7 @@ def start_wandb_run_lamb(cfg: DictConfig, outer_fold:int, inner_fold: int, lamb:
     #returning wandb run object
     return run#currently not used, but leaving for structure and possible future use
 #function for starting wandb run 
-def start_wandb_run_in_cv(cfg: DictConfig, outer_fold:int, inner_fold: int):
+def start_wandb_run_in_cv(cfg: DictConfig, outer_fold:int):
     #starting wandb run for current configuration
     run = wandb.init(
         #setting up wandb info for run identification and organization in the dashboard
@@ -51,7 +51,6 @@ def start_wandb_run_in_cv(cfg: DictConfig, outer_fold:int, inner_fold: int):
         #config part of wandb info
         config={
             "outer_fold": outer_fold,
-            "inner_fold": inner_fold,
             "epochs": int(cfg.model.epochs),
             "learning_rate": float(cfg.model.learning_rate),
             "reg_mode": cfg.model.train_method.reg_mode,
