@@ -5,61 +5,9 @@ from omegaconf import DictConfig, OmegaConf
 from hydra.core.hydra_config import HydraConfig
 #wandb
 import wandb
-#pytorch
-import torch
-#dealing with files and paths etc.
-import os
-import itertools
-import json
-from copy import deepcopy
 #data handling
-import pandas as pd
 import numpy as np
 #--------------------Functions--------------------#
-#functions for converting search space from yaml to list of concrete model configs for sweeping
-def expand_search_space_dim(space_dict):
-    #conerting DictConfig to regular dict for easier handling and logging in wandb (fails downstream without it))
-    space_dict = OmegaConf.to_container(space_dict, resolve=True)
-    #prepare keys and values (variables) for expansion
-    keys = list(space_dict.keys())#this gets names of all parameters (for example learning rate, momentum, regularization strength, optimizer, etc.) as a list
-    values = []
-    #Putting all values as lists (if not already lists) for easier expansion using itertools.product (which expects iterables for expansion, i.e. lists, not single values which might be the case)
-    for value in space_dict.values():#iterating over values in different keys
-        if isinstance(value, (list, tuple)):#if list or tuple, keep as list
-            values.append(list(value))
-        else:#if not make one-element list
-            values.append([value])
-    #prepare varaible to hold each configuration (combination of parameters) as a dict for easier handling and logging
-    results = []
-    #expanding using cartesian product of all values (all combinations of parameters) and creating dict for each combination with keys as parameter names and values as specific value for that parameter in that combination
-    for combo in itertools.product(*values):
-        #adding single configuration (combination of parameters) as a dict to results list
-        results.append(dict(zip(keys, combo)))
-    #returning output
-    return results
-def expand_search_space(search_cfg):
-    #getting all pre-processing variants
-    preprocess_runs = expand_search_space_dim(search_cfg.preprocess)
-    #preparing list to hold all combinations of model and pre-processing configurations for sweeping
-    runs = []
-    #iterating through all models
-    for model_name, model_space in search_cfg.models.items():
-        #getting all variants for current model
-        model_runs = expand_search_space_dim(model_space)
-        #combining each model configuration with each pre-processing configuration and adding to runs list
-        for model_params in model_runs:#iterating through all model params combinations for current model
-            for preprocess_params in preprocess_runs:#iterating through all pre-processing params combinations
-                #joining current model configuration with current pre-processing configuration and adding to runs list
-                runs.append(
-                    {
-                        "model": {
-                            "name": model_name,#name of the model implemented in model.py
-                            "params": model_params,#hypermaeters for model training
-                        },
-                    }
-                )
-    #returning output
-    return runs
 #function for starting wandb run 
 def start_wandb_run(cfg: DictConfig, run_cfg: dict, job_type: str):
     #starting wandb run for current configuration
@@ -94,82 +42,100 @@ def start_wandb_run(cfg: DictConfig, run_cfg: dict, job_type: str):
 def main(cfg: DictConfig) -> None:
     #importing code form modules (seprate files for better orgnization of logic)
     from data import load_data, train_test_split
-    from train import train
+    from train import train_GD, train_SGD
+    from model import FFNN
+    from utils import KSplit, train_test_folds, init_from_str, activ_info_from_str_list, loss_info_from_str, update_from_str
+    from loss import mse_loss
+    #------------------main code------------------#
+    #getting model configuration
+    hidden_info = cfg.model.model.hidden_info
+    activ_info_str = cfg.model.model.activ_info
+    method_init_str = cfg.model.model.method_init
+    #getting training configuration
+    train_method_type = cfg.model.train_method.type
+    batch_size = cfg.model.train_method.batch_size
+    loss_info_str = cfg.model.train_method.loss
+    reg_mode = cfg.model.train_method.reg_mode
+    lambdas = cfg.model.lambdas
+    epochs = cfg.model.epochs
+    learning_rate = cfg.model.learning_rate
+    #
+    log_freq = cfg.search.log_freq
+    seed_split = cfg.search.seed_split
+    fold_out = cfg.search.fold_out
+    fold_in = cfg.search.fold_in
+    #convertig strings in config to actual functions for use in model building and training
+    activ_info = activ_info_from_str_list(activ_info_str)#getting activation functions and their derivatives for current configuration based on strings in config
+    method_init = init_from_str(method_init_str)#getting initialization method for current configuration based on string in config
+    loss_info = loss_info_from_str(loss_info_str)#getting loss function and its derivative for current configuration based on string in config
+    update_func = update_from_str(reg_mode)#getting update function for current configuration based on regularization mode string in config
+    #if no regularization, then there is no need to hyperparameter tune lambda, so we set it to 0 for all runs in this case, to keep the same structure of the code and avoid errors in training loop where lambda is used
+    if reg_mode == "None":
+        lambdas = [0]
     #data loading
-    features,labels = load_data()
-    #splitting data into train and test sets
-    features_train, features_test, labels_train, labels_test = train_test_split()
-    #getting config for each wandb run
-    run_cfg = expand_search_space(cfg.search)
-    #preparing variable to hold results
-    sweep_results = []
-    #going through all configurations
-    for model_cfg in run_cfg:
-        #starting wandb run for current configuration
-        run = start_wandb_run(cfg, model_cfg, job_type="sweep")
-        #training
-        _ , results = train()
-        #logging direct results of current run
-        run.log(
-            {
-                "train_acc": results["train_acc"],
-                "val_acc": results["val_acc"],
-            }
-        )
-        #finishing current run after logging all needed info
-        wandb.finish()
-        #adding results of current run to program results (not wandb logging)
-        sweep_results.append(
-            {
-                "model_cfg": deepcopy(model_cfg),
-                "train_acc": results["train_acc"],
-                "val_acc": results["val_acc"],
-            }
-        )
-    ##-----best configuration is being retrained as it is not feasible to save all models during training and then just pick the best one for evaluation on test set, so we need to retrain the best model configuration on the whole training set and evaluate on test(validation) set (which is the same models were trained in the sweep)-----##
-    #getting best configuration based on validation accuracy (the main metric for model selection) from all runs in sweep results
-    best_result = max(sweep_results, key=lambda x: x["val_acc"])
-    best_model_cfg = best_result["model_cfg"]
-    #making run for final model training and evaluation with best configuration (based on validation accuracy) on test set and logging it in wandb
-    start_wandb_run(cfg, best_model_cfg, job_type="final")
-    #starting wandb run for current configuration
-    run = start_wandb_run(cfg, model_cfg, job_type="sweep")
-    #training
-    model, results = train()
-   #logging direct results of current run
-    run.log(
-        {
-            "train_acc": results["train_acc"],
-            "val_acc": results["val_acc"],
-        }
-    )
-    #getting save paths for for current hydra run
-    run_dir = HydraConfig.get().runtime.output_dir
-    os.makedirs(run_dir, exist_ok=True)
-    model_path = os.path.join(run_dir, "best_model.pt")
-    metrics_path = os.path.join(run_dir, "best_metrics.json")
-    #saving best model to hydra run
-    torch.save(model.state_dict(), model_path)
-    #saving metrics and configuration of the best model
-    with open(metrics_path, "w") as file:#opens/creates json file for writing config and metrics of the best model
-        json.dump(
-            {
-                "best_model_cfg": best_model_cfg,
-                "train_acc": best_result["train_acc"],
-                "val_acc": best_result["val_acc"],
-            },
-            file,
-            indent=2,
-        )
-    #logging results of best models as artifact to wandb
-    artifact = wandb.Artifact("best-model", type="model")
-    artifact.add_file(model_path)
-    artifact.add_file(metrics_path)
-    wandb.log_artifact(artifact)
-    #finishing run of best model
-    wandb.finish()
-
-
+    X,Y = load_data()
+    input_size = X.shape[1]#number of features in the data, needed for model building
+    output_size = Y.shape[1]#number of classes in the data, needed for model building
+    #getting list of indices for all samples in the data, needed for splitting into folds for cross-validation
+    indices = list(range(X.shape[0]))#list of indices for all samples in the data, needed for splitting into folds for cross-validation
+    folds_out = KSplit(indices, n_splits=fold_out, seed=seed_split)
+    #
+    best_lambdas_results = {}
+    #outer loop of cv
+    for iOutFold in range(fold_out):
+        #splitting data into train and test sets based on current fold for cross-validation
+        indices_fold_out_train, indices_out_fold_test = train_test_folds(folds_out, iOutFold)
+        #getting inner folds for cross-validation on the train set of current outer fold
+        folds_in = KSplit(indices_fold_out_train, n_splits=fold_in, seed=seed_split)
+        #initializing variable to store validation scores for different lambda values for current fold in cross-validation, to be used for hyperparameter tuning of lambda based on validation performance
+        val_scores = np.zeros((len(lambdas), fold_in))
+        #inner loop for hyperparameter tuning of regularization strength lambda for current fold in cross-validation
+        for iLambda in range(len(lambdas)):
+            #getting current lambda value for regularization strength for current run in sweep
+            lamb = lambdas[iLambda]
+            #inner loop for cv
+            for jInFold in range(fold_in):
+                #getting train and validation sets for current fold in inner loop
+                indices_fold_in_train, indices_fold_in_val = train_test_folds(folds_in, jInFold)
+                #getting data for current fold in inner loop for training and validation based on split indices
+                X_train_in = X[indices_fold_in_train]
+                Y_train_in = Y[indices_fold_in_train]
+                X_val_in = X[indices_fold_in_val]
+                Y_val_in = Y[indices_fold_in_val]
+                #declaring model
+                model = FFNN(input_size = input_size, output_size = output_size, hidden_info = hidden_info, activ_info = activ_info, method_init = method_init)#model building based on current configuration (architecture and hyperparameters) for current run in sweep
+                #training model based on given method
+                match train_method_type:
+                    case "GD":
+                        loss_train, loss_test = train_GD(model, X_train_in, Y_train_in, X_val_in, Y_val_in, loss_info = loss_info, update_func = update_func,lambda_= lamb, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
+                    case "SGD":
+                        loss_train, loss_test = train_SGD(model, X_train_in, Y_train_in, X_val_in, Y_val_in, batch_size = batch_size, loss_info = loss_info, update_func = update_func,lambda_= lamb, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
+                    case _:
+                        raise ValueError(f"Unknown training method: {train_method_type}")
+                #getting and saving validation score for current lambda and inner fold
+                val_score = loss_test[-1]
+                val_scores[iLambda, jInFold] = val_score
+        #getting best lambda value from inner loop
+        val_scores_mean = np.mean(val_scores, axis=1)
+        best_lambda_index = np.argmin(val_scores_mean)
+        best_lambda = lambdas[best_lambda_index]
+        #splitting data into train and test sets based on current fold for cross-validation
+        X_train_out = X[indices_fold_out_train]
+        Y_train_out = Y[indices_fold_out_train]
+        X_test_out = X[indices_out_fold_test]
+        Y_test_out = Y[indices_out_fold_test]
+        #
+        model = FFNN(input_size = input_size, output_size = output_size, hidden_info = hidden_info, activ_info = activ_info, method_init = method_init)#model building based on current configuration (architecture and hyperparameters) for current run in sweep
+        #
+        match train_method_type:
+            case "GD":
+                loss_train, loss_test = train_GD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, loss_info = loss_info, update_func = update_func,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
+            case "SGD":
+                loss_train, loss_test = train_SGD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, batch_size = batch_size, loss_info = loss_info, update_func = update_func,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
+            case _:
+                raise ValueError(f"Unknown training method: {train_method_type}")
+        #
+        best_lambdas_results[best_lambda] = loss_test[-1]
 if __name__ == "__main__":
     main()
 

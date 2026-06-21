@@ -1,7 +1,5 @@
 defaults:
-  - dataset: base
+  - dataset: default
   - logger: wandb
   - search: default
   - _self_
-
-seed: 42
