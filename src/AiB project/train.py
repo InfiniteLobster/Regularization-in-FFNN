@@ -8,50 +8,66 @@ from loss import mse_loss, mse_loss_derivative
 from update import standard
 #--------------------Functions--------------------#
 #
-def train_GD(model_totrain: FFNN, X:np.ndarray, Y:np.ndarray,update_func: callable = standard, learning_rate: float = 0.01, epochs: int = 1000, log_freq: int = 100) -> FFNN:
+def train_GD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndarray, Y_test:np.ndarray, loss_info: list = [mse_loss, mse_loss_derivative], update_func: callable = standard,lambda_: float = 0, learning_rate: float = 0.01, epochs: int = 1000, log_freq: int = 100) -> FFNN:
+    #getting loss function and its derivative
+    loss_func = loss_info[0]
+    loss_derivative = loss_info[1]
     #declaring variable to store loss values for logging purposes
-    loss_log = []
+    loss_train = []
+    loss_test = []
     #iterating through epochs for training
     for epoch in range(epochs):
         #forward
-        out = model_totrain.forward(X)
+        out = model.forward(X_train)
         #loss
         if(epoch % log_freq == 0):
-            loss_train = mse_loss(Y, out[-1])
-            loss_log.append(loss_train)
+            #testing model on train set and storing loss value for logging purposes
+            loss_train_value = loss_func(Y_train, out[-1])
+            loss_train.append(loss_train_value)
+            #testing model on test set and storing loss value for logging purposes
+            loss_test_value = loss_func(Y_test, model.forward(X_test)[-1])
+            loss_test.append(loss_test_value)
         #loss der
-        loss_der = mse_loss_derivative(Y, out[-1])
+        loss_der = loss_derivative(Y_train, out[-1])
         #backward(update)
-        model_totrain.backward(A = out, loss_derivative = loss_der, update_func = update_func, learning_rate = learning_rate)
+        model.backward(A = out, loss_derivative = loss_der, update_func = update_func, learning_rate = learning_rate, lambda_ = lambda_)
     #returning output
-    return model_totrain, loss_log
+    return loss_train, loss_test
 #
-def train_SGD(model_totrain: FFNN, X:np.ndarray, Y:np.ndarray, batch_size: int = 32, update_func: callable = standard, learning_rate: float = 0.01, epochs: int = 1000, log_freq: int = 100) -> FFNN:
+def train_SGD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndarray, Y_test:np.ndarray, batch_size: int = 32,loss_info: list = [mse_loss, mse_loss_derivative], update_func: callable = standard, lambda_: float = 0, learning_rate: float = 0.01, epochs: int = 1000, log_freq: int = 100) -> FFNN:
+    #getting loss function and its derivative
+    loss_func = loss_info[0]
+    loss_derivative = loss_info[1]
     #declaring variable to store loss values for logging purposes
-    loss_log = []
+    loss_train = []
+    loss_test = []
     #getting number of samples for shuffling and batching
-    num_samples = X.shape[0]
+    num_samples = X_train.shape[0]
     #iterating through epochs for training
     for epoch in range(epochs):
         #shuffling data at the beginning of each epoch
         indices = np.arange(num_samples)
         np.random.shuffle(indices)
-        X_shuffled = X[indices]
-        Y_shuffled = Y[indices]
+        X_shuffled = X_train[indices]
+        Y_shuffled = Y_train[indices]
         #iterating through batches
         for i in range(0, num_samples, batch_size):
             #getting current batch of data
             X_batch = X_shuffled[i:i+batch_size]
             Y_batch = Y_shuffled[i:i+batch_size]
             #forward
-            out = model_totrain.forward(X_batch)
+            out = model.forward(X_batch)
             #loss
             if(epoch % log_freq == 0 and i == 0): 
-                loss_train = mse_loss(Y_batch, out[-1])
-                loss_log.append(loss_train)
+                #testing model on train set and storing loss value for logging purposes
+                loss_train_value = loss_func(Y_batch, out[-1])
+                loss_train.append(loss_train_value)
+                #testing model on test set and storing loss value for logging purposes
+                loss_test_value = loss_func(Y_test, model.forward(X_test)[-1])
+                loss_test.append(loss_test_value)
             #loss der
-            loss_der = mse_loss_derivative(Y_batch, out[-1])
+            loss_der = loss_derivative(Y_batch, out[-1])
             #backward(update)
-            model_totrain.backward(A = out, loss_derivative = loss_der, update_func = update_func, learning_rate = learning_rate)
+            model.backward(A = out, loss_derivative = loss_der, update_func = update_func, learning_rate = learning_rate, lambda_ = lambda_)
     #returning output
-    return model_totrain, loss_log
+    return loss_train, loss_test

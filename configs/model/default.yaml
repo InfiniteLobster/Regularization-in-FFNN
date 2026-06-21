@@ -1,0 +1,12 @@
+model:
+  hidden_info: [128, 64, 32]
+  activ_info: ["relu", "sigmoid"]
+  method_init: "xavier_uniform" #options: "zero", "xavier_uniform"
+train_method:
+  type: "SGD" #options: "GD", "SGD"
+  loss: "mse_loss"
+  reg_mode: "None" #options: "None", "L1", "L2"
+  batch_size: 32
+epochs: 10000
+learning_rate: 0.01
+lambdas: [0.001, 0.01, 0.1, 1, 10, 100, 1000]
