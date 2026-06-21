@@ -64,3 +64,26 @@ class DataLoader:
             batch_idxs = idxs[start:start + self.batch_size]
             batch = [self.dataset[i] for i in batch_idxs]
             yield batch
+#
+def load_data(root="data/"):
+    #
+    files = list_non_dat_files(root)
+    #
+    X = []
+    Y = []
+    for path in files:
+        arr = np.genfromtxt(
+            path,
+            dtype=[("col1", "U50"), ("col2", "f8"), ("col3", "U50")],
+            delimiter=None,
+            encoding="utf-8"
+        )
+        arr = np.atleast_1d(arr)
+        for row in arr:
+            X.append(encode_peptide(row["col1"]))
+            Y.append(row["col2"])
+
+    X = np.array(X, dtype=np.float32)
+    Y = np.array(Y, dtype=np.float32).reshape(-1, 1)
+    #
+    return X, Y
