@@ -10,7 +10,7 @@ import numpy as np
 from scipy.stats import pearsonr
 #--------------------Functions--------------------#
 #function to start wandb run for specific lambda value in inner loop of cross-validation for hyperparameter tuning of lambda (to log training curves information)
-def start_wandb_run_lamb(cfg: DictConfig, outer_fold:int, inner_fold: int, lamb: float, input_size: int, output_size: int) -> wandb.sdk.wandb_run.Run:
+def start_wandb_run_lamb(cfg: DictConfig, outer_fold:int, inner_fold: int, lamb: float, input_size: int, output_size: int, reg_layer:list) -> wandb.sdk.wandb_run.Run:
     #starting wandb run for current configuration
     run = wandb.init(
         #setting up wandb info for run identification and organization in the dashboard
@@ -26,7 +26,7 @@ def start_wandb_run_lamb(cfg: DictConfig, outer_fold:int, inner_fold: int, lamb:
             "epochs": int(cfg.model.epochs),#train parameter
             "learning_rate": float(cfg.model.learning_rate),#train parameter
             "loss_func": cfg.model.train_method.loss,#train parameter
-            "reg_layer": cfg.model.train_method.reg_layer,#train parameter
+            "reg_layer": reg_layer,#train parameter
             "train_method": cfg.model.train_method.type,#train parameter
             "batch_size": int(cfg.model.train_method.batch_size),#train parameter
             "input_size": input_size,#model architecture parameter
@@ -47,7 +47,7 @@ def start_wandb_run_lamb(cfg: DictConfig, outer_fold:int, inner_fold: int, lamb:
     #returning wandb run object
     return run
 #function for starting wandb run for all inner folds of specific outer fold
-def start_wandb_run_in_cv(cfg: DictConfig, outer_fold:int, input_size: int, output_size: int):
+def start_wandb_run_in_cv(cfg: DictConfig, outer_fold:int, input_size: int, output_size: int, reg_layer:list):
     #starting wandb run for current configuration
     run = wandb.init(
         #setting up wandb info for run identification and organization in the dashboard
@@ -61,7 +61,7 @@ def start_wandb_run_in_cv(cfg: DictConfig, outer_fold:int, input_size: int, outp
             "epochs": int(cfg.model.epochs),#train parameter
             "learning_rate": float(cfg.model.learning_rate),#train parameter
             "loss_func": cfg.model.train_method.loss,#train parameter
-            "reg_layer": cfg.model.train_method.reg_layer,#train parameter
+            "reg_layer": reg_layer,#train parameter
             "train_method": cfg.model.train_method.type,#train parameter
             "batch_size": int(cfg.model.train_method.batch_size),#train parameter
             "input_size": input_size,#model architecture parameter
@@ -82,7 +82,7 @@ def start_wandb_run_in_cv(cfg: DictConfig, outer_fold:int, input_size: int, outp
     #returning wandb run object
     return run
 #function for starting wandb run for specific outer fold with best lambda value from inner loop of cross-validation (to log training curves information)
-def start_wandb_run_out(cfg: DictConfig, outer_fold:int, lamb: float, input_size: int, output_size: int):
+def start_wandb_run_out(cfg: DictConfig, outer_fold:int, lamb: float, input_size: int, output_size: int, reg_layer:list):
     #starting wandb run for current configuration
     run = wandb.init(
         #setting up wandb info for run identification and organization in the dashboard
@@ -97,7 +97,7 @@ def start_wandb_run_out(cfg: DictConfig, outer_fold:int, lamb: float, input_size
             "epochs": int(cfg.model.epochs),#train parameter
             "learning_rate": float(cfg.model.learning_rate),#train parameter
             "loss_func": cfg.model.train_method.loss,#train parameter
-            "reg_layer": cfg.model.train_method.reg_layer,#train parameter
+            "reg_layer": reg_layer,#train parameter
             "train_method": cfg.model.train_method.type,#train parameter
             "batch_size": int(cfg.model.train_method.batch_size),#train parameter
             "input_size": input_size,#model architecture parameter
@@ -118,7 +118,7 @@ def start_wandb_run_out(cfg: DictConfig, outer_fold:int, lamb: float, input_size
     #returning wandb run object
     return run
 #function for starting wandb run for the whole cv process (to log overall results of cv and best lambda values across folds)
-def start_wandb_run_out_cv(cfg: DictConfig, input_size: int, output_size: int):
+def start_wandb_run_out_cv(cfg: DictConfig, input_size: int, output_size: int, reg_layer:list):
     #starting wandb run for current configuration
     run = wandb.init(
         #setting up wandb info for run identification and organization in the dashboard
@@ -131,7 +131,7 @@ def start_wandb_run_out_cv(cfg: DictConfig, input_size: int, output_size: int):
             "epochs": int(cfg.model.epochs),#train parameter
             "learning_rate": float(cfg.model.learning_rate),#train parameter
             "loss_func": cfg.model.train_method.loss,#train parameter
-            "reg_layer": cfg.model.train_method.reg_layer,#train parameter
+            "reg_layer": reg_layer,#train parameter
             "train_method": cfg.model.train_method.type,#train parameter
             "batch_size": int(cfg.model.train_method.batch_size),#train parameter
             "input_size": input_size,#model architecture parameter
@@ -234,17 +234,17 @@ def main(cfg: DictConfig) -> None:
     indices = list(range(X.shape[0]))#list of indices for all samples in the data, needed for splitting into folds for cross-validation
     folds_out = KSplit(indices, n_splits=fold_out, seed=seed_split)
     #declaring variable to store cv results
-    best_lambdas_results = {}
+    best_lambdas_loss = {}
+    best_lambdas_pearson = {}
     #outer loop of cv
     for iOutFold in range(fold_out):
         #splitting data into train and test sets based on current fold for cross-validation
         indices_fold_out_train, indices_out_fold_test = train_test_folds(folds_out, iOutFold)
         #getting inner folds for cross-validation on the train set of current outer fold
         folds_in = KSplit(indices_fold_out_train, n_splits=fold_in, seed=seed_split)
-        #initializing variable to store validation scores for different lambda values for current fold in cross-validation, to be used for hyperparameter tuning of lambda based on validation performance
+        #initializing variable to store validation loss scores and pearson coefficients for different lambda values for current fold in cross-validation, to be used for hyperparameter tuning of lambda based on validation performance
         val_scores = np.zeros((len(lambdas), fold_in))
-        #
-        person_corrs = np.zeros((len(lambdas), fold_in))
+        pearson_corrs = np.zeros((len(lambdas), fold_in))
         #inner loop for hyperparameter tuning of regularization strength lambda for current fold in cross-validation
         for iLambda in range(len(lambdas)):
             #getting current lambda value for regularization strength for current run in sweep
@@ -271,20 +271,25 @@ def main(cfg: DictConfig) -> None:
                 #getting and saving validation score for current lambda and inner fold
                 val_score = loss_test[-1]
                 val_scores[iLambda, jInFold] = val_score
+                #getting and saving pearson coefficient for current lambda and inner fold
+                pearson_corr = pearson_test[-1]
+                pearson_corrs[iLambda, jInFold] = pearson_corr
                 #starting wandb run for current lambda and inner fold to log
-                run = start_wandb_run_lamb(cfg, iOutFold, jInFold, lamb, input_size, output_size)
+                run = start_wandb_run_lamb(cfg, iOutFold, jInFold, lamb, input_size, output_size, reg_layer)
                 #logging data
                 log_epoch_data(loss_train, loss_test, pearson_train, pearson_test, weights_list, biases_list)
                 #finishing wandb run for current lambda and inner fold
                 run.finish()
         #getting best lambda value from inner loop
         val_scores_mean = np.mean(val_scores, axis=1)
+        pearson_mean = np.mean(pearson_corrs, axis=1)
         best_lambda_index = int(np.argmin(val_scores_mean))
         best_lambda = lambdas[best_lambda_index]
         #starting wandb run for current outer fold to log overall results of inner loop of cv for different lambda values
-        run = start_wandb_run_in_cv(cfg, iOutFold, input_size, output_size)
+        run = start_wandb_run_in_cv(cfg, iOutFold, input_size, output_size, reg_layer )
         #logging validation scores for different lambda values for current fold in cross-validation in wandb
         run.summary["val_scores_mean"] = val_scores_mean.tolist()
+        run.summary["pearson_mean"] = pearson_mean.tolist()
         #finishing wandb run for current outer fold for inner loop results
         run.finish()
         #splitting data into train and test sets based on current fold for cross-validation
@@ -302,38 +307,47 @@ def main(cfg: DictConfig) -> None:
                 loss_train, loss_test, pearson_train, pearson_test, weights_list, biases_list = train_SGD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, reg_layer = reg_layer, batch_size = batch_size, loss_info = loss_info,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
             case _:
                 raise ValueError(f"Unknown training method: {train_method_type}")
-        #saving test score for best lambda value for current fold
-        best_lambdas_results[best_lambda] = loss_test[-1]
+        #saving test loss score and pearson coefficient for best lambda value for current fold
+        best_lambdas_loss[best_lambda] = loss_test[-1]
+        best_lambdas_pearson[best_lambda] = pearson_test[-1]
         #starting wandb run for current outer fold to log
-        run =start_wandb_run_out(cfg, iOutFold, best_lambda, input_size, output_size)
+        run =start_wandb_run_out(cfg, iOutFold, best_lambda, input_size, output_size, reg_layer)
         #logging data
         log_epoch_data(loss_train, loss_test, pearson_train, pearson_test, weights_list, biases_list)
         #finishing wandb run for current outer fold
         run.finish()
     #getting best lambda information for cv run
-    best_lambda_overall_index = int(np.argmin(list(best_lambdas_results.values())))
-    best_lambda_overall = list(best_lambdas_results.keys())[best_lambda_overall_index]
-    best_lambda_overall_score = list(best_lambdas_results.values())[best_lambda_overall_index]
+    best_lambda_all_index = int(np.argmin(list(best_lambdas_loss.values())))
+    best_lambda_all = list(best_lambdas_loss.keys())[best_lambda_all_index]
+    best_lambda_all_loss = list(best_lambdas_loss.values())[best_lambda_all_index]
+    best_lambda_all_pearson = best_lambdas_pearson[best_lambda_all]
     #getting worst lambda information for cv run
-    worst_lambda_overall_index = int(np.argmax(list(best_lambdas_results.values())))
-    worst_lambda_overall = list(best_lambdas_results.keys())[worst_lambda_overall_index]
-    worst_lambda_overall_score = list(best_lambdas_results.values())[worst_lambda_overall_index]
+    worst_lambda_all_index = int(np.argmax(list(best_lambdas_loss.values())))
+    worst_lambda_all = list(best_lambdas_loss.keys())[worst_lambda_all_index]
+    worst_lambda_all_loss = list(best_lambdas_loss.values())[worst_lambda_all_index]
+    worst_lambda_all_pearson = best_lambdas_pearson[worst_lambda_all]
     #getting which lambda value is the most common among the best lambda values
-    most_common_lambda = max(set(list(best_lambdas_results.keys())), key=list(best_lambdas_results.keys()).count)
-    most_common_lambda_score = best_lambdas_results[most_common_lambda]
+    mode_lambda_all = max(set(list(best_lambdas_loss.keys())), key=list(best_lambdas_loss.keys()).count)
+    mode_lambda_all_loss = best_lambdas_loss[mode_lambda_all]
+    mode_lambda_all_pearson = best_lambdas_pearson[mode_lambda_all]
     #getting average test score across folds for best lambda values
-    average_test_score = np.mean(list(best_lambdas_results.values()))
+    mean_test_loss = np.mean(list(best_lambdas_loss.values()))
+    mean_test_pearson = np.mean(list(best_lambdas_pearson.values()))
     #starting wandb run for whole cv process to log overall results of cv and best lambda values across folds
-    run = start_wandb_run_out_cv(cfg, input_size, output_size)
+    run = start_wandb_run_out_cv(cfg, input_size, output_size, reg_layer)
     #logging overall results of cv and best lambda values across folds in wandb
     wandb.log({
-        "best_lambda_overall": best_lambda_overall, 
-        "best_lambda_overall_score": best_lambda_overall_score,
-        "worst_lambda_overall": worst_lambda_overall,
-        "worst_lambda_overall_score": worst_lambda_overall_score,
-        "most_common_lambda": most_common_lambda,
-        "most_common_lambda_score": most_common_lambda_score,
-        "average_test_score": average_test_score
+        "best lambda": best_lambda_all, 
+        "best lambda loss": best_lambda_all_loss,
+        "best lambda pearson": best_lambda_all_pearson,
+        "worst lambda": worst_lambda_all,
+        "worst lambda loss": worst_lambda_all_loss,
+        "worst lambda pearson": worst_lambda_all_pearson,
+        "most common lambda": mode_lambda_all,
+        "most common lambda loss": mode_lambda_all_loss,
+        "most common lambda pearson": mode_lambda_all_pearson,
+        "average test loss": mean_test_loss,
+        "average test pearson": mean_test_pearson
         })
     #finishing wandb run for whole cv process
     run.finish()
