@@ -8,7 +8,6 @@ hydra:
   mode: MULTIRUN
   sweeper:
     params:
-      model.train_method.reg_mode: L2
       model.train_method.type: SGD
-      model.train_method.reg_layer: 1111
-      logger.project: Test6
+      model.train_method.reg_layer: 0000,1111
+      logger.project: Test7
