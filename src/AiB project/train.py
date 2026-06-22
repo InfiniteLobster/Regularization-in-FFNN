@@ -5,12 +5,12 @@ from model import FFNN
 from loss import mse_loss, mse_loss_derivative
 from scipy.stats import pearsonr
 #--------------------Functions--------------------#
-#
+#Gradient descent training function for FFNN model
 def train_GD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndarray, Y_test:np.ndarray, reg_layer:list, loss_info: list = [mse_loss, mse_loss_derivative],lambda_: float = 0, learning_rate: float = 0.01, epochs: int = 1000, log_freq: int = 100) -> FFNN:
     #getting loss function and its derivative
     loss_func = loss_info[0]
     loss_derivative = loss_info[1]
-    #declaring variable to store loss values for logging purposes
+    #declaring variable to store output values
     loss_train = []
     loss_test = []
     pearson_train = []
@@ -23,22 +23,22 @@ def train_GD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndarr
         out = model.forward(X_train)
         #loss
         if(epoch % log_freq == 0):
-            #
+            #geting pedictions on train and test set
             Y_pred_train = out[-1]
             Y_pred_test = model.forward(X_test)[-1]
-            #testing model on train set and storing loss value for logging purposes
+            #getting loss score on train set and storing it for logging purposes
             loss_train_value = loss_func(Y_train, Y_pred_train)
             loss_train.append(loss_train_value)
-            #testing model on test set and storing loss value for logging purposes
+            #getting loss score on test set and storing it for logging purposes
             loss_test_value = loss_func(Y_test, Y_pred_test)
             loss_test.append(loss_test_value)
-            #
+            #getting pearson correlation coefficient on train set and storing it for logging purposes
             pearson_train_value = pearsonr(Y_train.flatten(), Y_pred_train.flatten())[0]
             pearson_train.append(pearson_train_value)
-            #
+            #getting pearson correlation coefficient on test set and storing it for logging purposes
             pearson_test_value = pearsonr(Y_test.flatten(), Y_pred_test.flatten())[0]
             pearson_test.append(pearson_test_value)
-            #
+            #copying weights and biases for logging purposes
             weights_list.append([w.copy() for w in model.weights_list])
             biases_list.append([b.copy() for b in model.biases_list])
         #loss der
@@ -47,12 +47,12 @@ def train_GD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndarr
         model.backward(A = out, loss_derivative = loss_der, reg_layer = reg_layer, learning_rate = learning_rate, lambda_ = lambda_)
     #returning output
     return loss_train, loss_test, pearson_train, pearson_test, weights_list, biases_list
-#
+#Stochastic gradient descent training function for FFNN model
 def train_SGD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndarray, Y_test:np.ndarray, reg_layer:list, batch_size: int = 32,loss_info: list = [mse_loss, mse_loss_derivative], lambda_: float = 0, learning_rate: float = 0.01, epochs: int = 1000, log_freq: int = 100) -> FFNN:
     #getting loss function and its derivative
     loss_func = loss_info[0]
     loss_derivative = loss_info[1]
-    #declaring variable to store loss values for logging purposes
+    #declaring variable to store output values
     loss_train = []
     loss_test = []
     pearson_train = []
@@ -77,7 +77,7 @@ def train_SGD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndar
             out = model.forward(X_batch)
             #loss
             if(epoch % log_freq == 0 and i == 0): 
-                #
+                #getting predictions on train and test set
                 Y_pred_train = out[-1]
                 Y_pred_test = model.forward(X_test)[-1]
                 #testing model on train set and storing loss value for logging purposes
@@ -86,12 +86,13 @@ def train_SGD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndar
                 #testing model on test set and storing loss value for logging purposes
                 loss_test_value = loss_func(Y_test, Y_pred_test)
                 loss_test.append(loss_test_value)
-                #
+                #getting pearson correlation coefficient on train set and storing it for logging purposes
                 pearson_train_value = pearsonr(Y_batch.flatten(), Y_pred_train.flatten())[0]
                 pearson_train.append(pearson_train_value)
+                #getting pearson correlation coefficient on test set and storing it for logging purposes
                 pearson_test_value = pearsonr(Y_test.flatten(), Y_pred_test.flatten())[0]
                 pearson_test.append(pearson_test_value)
-                #
+                #copying weights and biases for logging purposes
                 weights_list.append([w.copy() for w in model.weights_list])
                 biases_list.append([b.copy() for b in model.biases_list])
             #loss der

@@ -64,13 +64,14 @@ class DataLoader:
             batch_idxs = idxs[start:start + self.batch_size]
             batch = [self.dataset[i] for i in batch_idxs]
             yield batch
-#
+#function to load data from files and encode peptide sequences into one-hot vectors, returning feature matrix X and target vector Y as numpy arrays
 def load_data(root="data/dataset"):
-    #
+    #getting the files
     files = list_non_dat_files(root)
-    #
+    #declaring variables to store data
     X = []
     Y = []
+    #iterating over files and loading data
     for path in files:
         arr = np.genfromtxt(
             path,
@@ -82,8 +83,8 @@ def load_data(root="data/dataset"):
         for row in arr:
             X.append(encode_peptide(row["col1"]))
             Y.append(row["col2"])
-
+    #converting data to numpy arrays
     X = np.array(X, dtype=np.float32)
     Y = np.array(Y, dtype=np.float32).reshape(-1, 1)
-    #
+    #returning data
     return X, Y

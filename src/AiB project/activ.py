@@ -36,15 +36,15 @@ def relu_derivative(a: np.ndarray) -> np.ndarray:
                          0)
     #returning output
     return rel_deriv
-#
+#Linear activation function
 def linear(z: np.ndarray) -> np.ndarray:
-    #
+    #getting linear activation values for input array
     a = z
-    #
+    #returning output
     return a
-#
+#derivative of linear activation function
 def linear_derivative(a: np.ndarray) -> np.ndarray:
-    #
+    #getting derivative values for linear activation function
     linear_deriv = np.ones_like(a)
-    #
+    #returning output
     return linear_deriv
