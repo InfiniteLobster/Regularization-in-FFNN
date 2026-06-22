@@ -208,7 +208,7 @@ def main(cfg: DictConfig) -> None:
     train_method_type = cfg.model.train_method.type
     batch_size = cfg.model.train_method.batch_size
     loss_info_str = cfg.model.train_method.loss
-    reg_layer_str = str(cfg.model.train_method.reg_layer)  # e.g. "1010"
+    reg_layer = cfg.model.train_method.reg_layer  # e.g. "1010"
     lambdas = cfg.model.lambdas
     epochs = cfg.model.epochs
     learning_rate = cfg.model.learning_rate
@@ -221,8 +221,6 @@ def main(cfg: DictConfig) -> None:
     activ_info = activ_info_from_str_list(activ_info_str)#getting activation functions and their derivatives for current configuration based on strings in config
     method_init = init_from_str(method_init_str)#getting initialization method for current configuration based on string in config
     loss_info = loss_info_from_str(loss_info_str)#getting loss function and its derivative for current configuration based on string in config
-    #converting regularization layer information from number to list of integers for use in training loop to determine which layers are regularized and which are not (forced due to the YAML file naming)
-    reg_layer = [int(c) for c in reg_layer_str]
     #if no regularization, then there is no need to hyperparameter tune lambda, so we set it to 0 for all runs in this case, to keep the same structure of the code and avoid errors in training loop where lambda is used
     if sum(reg_layer) == 0:
         lambdas = [0]
