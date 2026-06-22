@@ -15,6 +15,8 @@ def train_GD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndarr
     #declaring variable to store loss values for logging purposes
     loss_train = []
     loss_test = []
+    weights_list = []
+    biases_list = []
     #iterating through epochs for training
     for epoch in range(epochs):
         #forward
@@ -27,12 +29,15 @@ def train_GD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndarr
             #testing model on test set and storing loss value for logging purposes
             loss_test_value = loss_func(Y_test, model.forward(X_test)[-1])
             loss_test.append(loss_test_value)
+            #
+            weights_list.append([w.copy() for w in model.weights_list])
+            biases_list.append([b.copy() for b in model.biases_list])
         #loss der
         loss_der = loss_derivative(Y_train, out[-1])
         #backward(update)
         model.backward(A = out, loss_derivative = loss_der, update_func = update_func, reg_layer = reg_layer, learning_rate = learning_rate, lambda_ = lambda_)
     #returning output
-    return loss_train, loss_test
+    return loss_train, loss_test, weights_list, biases_list
 #
 def train_SGD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndarray, Y_test:np.ndarray, reg_layer:list, batch_size: int = 32,loss_info: list = [mse_loss, mse_loss_derivative], update_func: callable = standard, lambda_: float = 0, learning_rate: float = 0.01, epochs: int = 1000, log_freq: int = 100) -> FFNN:
     #getting loss function and its derivative
@@ -41,6 +46,8 @@ def train_SGD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndar
     #declaring variable to store loss values for logging purposes
     loss_train = []
     loss_test = []
+    weights_list = []
+    biases_list = []
     #getting number of samples for shuffling and batching
     num_samples = X_train.shape[0]
     #iterating through epochs for training
@@ -65,9 +72,12 @@ def train_SGD(model: FFNN, X_train:np.ndarray, Y_train:np.ndarray,X_test:np.ndar
                 #testing model on test set and storing loss value for logging purposes
                 loss_test_value = loss_func(Y_test, model.forward(X_test)[-1])
                 loss_test.append(loss_test_value)
+                #
+                weights_list.append([w.copy() for w in model.weights_list])
+                biases_list.append([b.copy() for b in model.biases_list])
             #loss der
             loss_der = loss_derivative(Y_batch, out[-1])
             #backward(update)
             model.backward(A = out, loss_derivative = loss_der, update_func = update_func, reg_layer = reg_layer, learning_rate = learning_rate, lambda_ = lambda_)
     #returning output
-    return loss_train, loss_test
+    return loss_train, loss_test, weights_list, biases_list

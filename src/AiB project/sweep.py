@@ -154,23 +154,22 @@ def start_wandb_run_out_cv(cfg: DictConfig, input_size: int, output_size: int):
     )
     #returning wandb run object
     return run#currently not used, but leaving for structure and possible future use
-#helper function for logging training and validation loss curves for each epoch in wandb, to be called at the end of each epoch during training (needed due to the wandb logging structure)
-def log_epoch_curves(loss_train:list, loss_val:list, prefix: str = "") -> None:
-    #iterating through epochs
-    for tr, va in zip(loss_train, loss_val):
-        wandb.log(
-            {
-                f"{prefix}train/loss": float(tr),
-                f"{prefix}val/loss": float(va),
-            }
-        )
-#
-def log_weight_histograms(model, prefix: str = "") -> None:
-    for i, (weights, biases) in enumerate(zip(model.weights_list, model.biases_list)):
-        wandb.log({
-            f"{prefix}layer_{i+1}_weights": wandb.Histogram(weights),
-            f"{prefix}layer_{i+1}_biases": wandb.Histogram(biases)
-        })
+#helper function for logging training curves data and weight updates in wandb for each epoch during training
+def log_epoch_data(loss_train: list,loss_val: list,weights_list: list,biases_list: list,prefix: str = ""):
+    #iteratin through epochs
+    for epoch, (tr, va, epoch_weights, epoch_biases) in enumerate(zip(loss_train, loss_val, weights_list, biases_list)):
+        #getting curve data
+        log_dict = {
+            f"{prefix}train/loss": float(tr),
+            f"{prefix}val/loss": float(va),
+        }
+        #iterating through network layers
+        for layer_idx, (w, b) in enumerate(zip(epoch_weights, epoch_biases)):
+            #getting weight and bias data
+            log_dict[f"{prefix}weights/layer_{layer_idx}"] = wandb.Histogram(w.flatten())
+            log_dict[f"{prefix}biases/layer_{layer_idx}"] = wandb.Histogram(b.flatten())
+
+        wandb.log(log_dict, step=epoch)
 #main 
 @hydra.main(config_path="../../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig) -> None:
@@ -189,7 +188,7 @@ def main(cfg: DictConfig) -> None:
     train_method_type = cfg.model.train_method.type
     batch_size = cfg.model.train_method.batch_size
     loss_info_str = cfg.model.train_method.loss
-    reg_layer_num = cfg.model.train_method.reg_layer  # e.g. "1010"
+    reg_layer_str = str(cfg.model.train_method.reg_layer)  # e.g. "1010"
     reg_mode = cfg.model.train_method.reg_mode
     lambdas = cfg.model.lambdas
     epochs = cfg.model.epochs
@@ -205,7 +204,7 @@ def main(cfg: DictConfig) -> None:
     loss_info = loss_info_from_str(loss_info_str)#getting loss function and its derivative for current configuration based on string in config
     update_func = update_from_str(reg_mode)#getting update function for current configuration based on regularization mode string in config
     #converting regularization layer information from number to list of integers for use in training loop to determine which layers are regularized and which are not (forced due to the YAML file naming)
-    reg_layer = [int(c) for c in reg_layer_num]
+    reg_layer = [int(c) for c in reg_layer_str]
     #if no regularization, then there is no need to hyperparameter tune lambda, so we set it to 0 for all runs in this case, to keep the same structure of the code and avoid errors in training loop where lambda is used
     if reg_mode == "None":
         lambdas = [0]
@@ -244,9 +243,9 @@ def main(cfg: DictConfig) -> None:
                 #training model based on given method
                 match train_method_type:
                     case "GD":
-                        loss_train, loss_test = train_GD(model, X_train_in, Y_train_in, X_val_in, Y_val_in, reg_layer = reg_layer, loss_info = loss_info, update_func = update_func,lambda_= lamb, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
+                        loss_train, loss_test, weights_list, biases_list = train_GD(model, X_train_in, Y_train_in, X_val_in, Y_val_in, reg_layer = reg_layer, loss_info = loss_info, update_func = update_func,lambda_= lamb, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
                     case "SGD":
-                        loss_train, loss_test = train_SGD(model, X_train_in, Y_train_in, X_val_in, Y_val_in, reg_layer = reg_layer, batch_size = batch_size, loss_info = loss_info, update_func = update_func,lambda_= lamb, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
+                        loss_train, loss_test, weights_list, biases_list = train_SGD(model, X_train_in, Y_train_in, X_val_in, Y_val_in, reg_layer = reg_layer, batch_size = batch_size, loss_info = loss_info, update_func = update_func,lambda_= lamb, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
                     case _:
                         raise ValueError(f"Unknown training method: {train_method_type}")
                 #getting and saving validation score for current lambda and inner fold
@@ -254,9 +253,8 @@ def main(cfg: DictConfig) -> None:
                 val_scores[iLambda, jInFold] = val_score
                 #starting wandb run for current lambda and inner fold to log
                 run = start_wandb_run_lamb(cfg, iOutFold, jInFold, lamb, input_size, output_size)
-                #logging training curves for current lambda and inner fold in wandb
-                log_epoch_curves(loss_train, loss_test)
-                log_weight_histograms(model)
+                #logging data
+                log_epoch_data(loss_train, loss_test, weights_list, biases_list)
                 #finishing wandb run for current lambda and inner fold
                 run.finish()
         #getting best lambda value from inner loop
@@ -279,19 +277,17 @@ def main(cfg: DictConfig) -> None:
         #training model based
         match train_method_type:
             case "GD":
-                loss_train, loss_test = train_GD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, reg_layer = reg_layer, loss_info = loss_info, update_func = update_func,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
+                loss_train, loss_test, weights_list, biases_list = train_GD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, reg_layer = reg_layer, loss_info = loss_info, update_func = update_func,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
             case "SGD":
-                loss_train, loss_test = train_SGD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, reg_layer = reg_layer, batch_size = batch_size, loss_info = loss_info, update_func = update_func,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
+                loss_train, loss_test, weights_list, biases_list = train_SGD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, reg_layer = reg_layer, batch_size = batch_size, loss_info = loss_info, update_func = update_func,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
             case _:
                 raise ValueError(f"Unknown training method: {train_method_type}")
         #saving test score for best lambda value for current fold
         best_lambdas_results[best_lambda] = loss_test[-1]
         #starting wandb run for current outer fold to log
         run =start_wandb_run_out(cfg, iOutFold, best_lambda, input_size, output_size)
-        #logging training curves for current outer fold in wandb
-        log_epoch_curves(loss_train, loss_test)
-        #logging weight histograms for current outer fold in wandb
-        log_weight_histograms(model)
+        #logging data
+        log_epoch_data(loss_train, loss_test, weights_list, biases_list)
         #finishing wandb run for current outer fold
         run.finish()
     #getting best lambda information for cv run
