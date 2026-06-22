@@ -164,6 +164,13 @@ def log_epoch_curves(loss_train:list, loss_val:list, prefix: str = "") -> None:
                 f"{prefix}val/loss": float(va),
             }
         )
+#
+def log_weight_histograms(model, prefix: str = "") -> None:
+    for i, (weights, biases) in enumerate(zip(model.weights_list, model.biases_list)):
+        wandb.log({
+            f"{prefix}layer_{i+1}_weights": wandb.Histogram(weights),
+            f"{prefix}layer_{i+1}_biases": wandb.Histogram(biases)
+        })
 #main 
 @hydra.main(config_path="../../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig) -> None:
@@ -245,10 +252,11 @@ def main(cfg: DictConfig) -> None:
                 #getting and saving validation score for current lambda and inner fold
                 val_score = loss_test[-1]
                 val_scores[iLambda, jInFold] = val_score
-                #starting wandb run for current lambda and inner fold to log training curves
+                #starting wandb run for current lambda and inner fold to log
                 run = start_wandb_run_lamb(cfg, iOutFold, jInFold, lamb, input_size, output_size)
                 #logging training curves for current lambda and inner fold in wandb
                 log_epoch_curves(loss_train, loss_test)
+                log_weight_histograms(model)
                 #finishing wandb run for current lambda and inner fold
                 run.finish()
         #getting best lambda value from inner loop
@@ -282,6 +290,8 @@ def main(cfg: DictConfig) -> None:
         run =start_wandb_run_out(cfg, iOutFold, best_lambda, input_size, output_size)
         #logging training curves for current outer fold in wandb
         log_epoch_curves(loss_train, loss_test)
+        #logging weight histograms for current outer fold in wandb
+        log_weight_histograms(model)
         #finishing wandb run for current outer fold
         run.finish()
     #getting best lambda information for cv run
