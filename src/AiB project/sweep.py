@@ -194,7 +194,7 @@ def main(cfg: DictConfig) -> None:
     from data import load_data
     from train import train_GD, train_SGD
     from model import FFNN
-    from utils import KSplit, train_test_folds, init_from_str, activ_info_from_str_list, loss_info_from_str, update_from_str
+    from utils import KSplit, train_test_folds, init_from_str, activ_info_from_str_list, loss_info_from_str
     from loss import mse_loss
     #------------------main code------------------#
     #getting model configuration

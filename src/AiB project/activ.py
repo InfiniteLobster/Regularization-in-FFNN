@@ -36,3 +36,15 @@ def relu_derivative(a: np.ndarray) -> np.ndarray:
                          0)
     #returning output
     return rel_deriv
+#
+def linear(z: np.ndarray) -> np.ndarray:
+    #
+    a = z
+    #
+    return a
+#
+def linear_derivative(a: np.ndarray) -> np.ndarray:
+    #
+    linear_deriv = np.ones_like(a)
+    #
+    return linear_deriv
