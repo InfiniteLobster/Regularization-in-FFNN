@@ -1,5 +1,5 @@
 name: wandb
-entity: Wandb-team-name
-project: Wandb-project-name
+entity: "AiB-Reg"
+project: "Test"
 mode: online
 init_timeout: 1000
