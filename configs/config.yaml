@@ -11,4 +11,4 @@ hydra:
       model.train_method.reg_mode: None,L1,L2
       model.train_method.type: GD,SGD
       model.train_method.reg_layer: 1111,0000,1010,0101
-      logger.project: Test2
+      logger.project: Test4

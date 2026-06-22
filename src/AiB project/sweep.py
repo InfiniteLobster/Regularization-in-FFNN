@@ -8,8 +8,8 @@ import wandb
 #data handling
 import numpy as np
 #--------------------Functions--------------------#
-#function for starting wandb run 
-def start_wandb_run_lamb(cfg: DictConfig, outer_fold:int, inner_fold: int, lamb: float):
+#function to start wandb run for specific lambda value in inner loop of cross-validation for hyperparameter tuning of lambda (to log training curves information)
+def start_wandb_run_lamb(cfg: DictConfig, outer_fold:int, inner_fold: int, lamb: float, input_size: int, output_size: int) -> wandb.sdk.wandb_run.Run:
     #starting wandb run for current configuration
     run = wandb.init(
         #setting up wandb info for run identification and organization in the dashboard
@@ -19,15 +19,21 @@ def start_wandb_run_lamb(cfg: DictConfig, outer_fold:int, inner_fold: int, lamb:
         mode=cfg.logger.get("mode", "online"),
         #config part of wandb info
         config={
-            "outer_fold": outer_fold,
-            "inner_fold": inner_fold,
-            "lambda": lamb,
-            "epochs": int(cfg.model.epochs),
-            "learning_rate": float(cfg.model.learning_rate),
-            "reg_layer": cfg.model.train_method.reg_layer,
-            "reg_mode": cfg.model.train_method.reg_mode,
-            "train_method": cfg.model.train_method.type,
-            "batch_size": int(cfg.model.train_method.batch_size),
+            "outer_fold": outer_fold,#identification
+            "inner_fold": inner_fold,#identification
+            "lambda": lamb,#identification and train parameter
+            "epochs": int(cfg.model.epochs),#train parameter
+            "learning_rate": float(cfg.model.learning_rate),#train parameter
+            "loss_func": cfg.model.train_method.loss,#train parameter
+            "reg_layer": cfg.model.train_method.reg_layer,#train parameter
+            "reg_mode": cfg.model.train_method.reg_mode,#train parameter
+            "train_method": cfg.model.train_method.type,#train parameter
+            "batch_size": int(cfg.model.train_method.batch_size),#train parameter
+            "input_size": input_size,#model architecture parameter
+            "hidden_info": cfg.model.model_info.hidden_info,#model architecture parameter
+            "output_size": output_size,#model architecture parameter
+            "activ_info": cfg.model.model_info.activ_info,#model architecture parameter
+            "method_init": cfg.model.model_info.method_init,#model architecture parameter
         },
         settings=wandb.Settings(
             init_timeout=cfg.logger.get("init_timeout", 180),
@@ -39,9 +45,9 @@ def start_wandb_run_lamb(cfg: DictConfig, outer_fold:int, inner_fold: int, lamb:
         reinit=True,
     )
     #returning wandb run object
-    return run#currently not used, but leaving for structure and possible future use
-#function for starting wandb run 
-def start_wandb_run_in_cv(cfg: DictConfig, outer_fold:int):
+    return run
+#function for starting wandb run for all inner folds of specific outer fold
+def start_wandb_run_in_cv(cfg: DictConfig, outer_fold:int, input_size: int, output_size: int):
     #starting wandb run for current configuration
     run = wandb.init(
         #setting up wandb info for run identification and organization in the dashboard
@@ -51,13 +57,19 @@ def start_wandb_run_in_cv(cfg: DictConfig, outer_fold:int):
         mode=cfg.logger.get("mode", "online"),
         #config part of wandb info
         config={
-            "outer_fold": outer_fold,
-            "epochs": int(cfg.model.epochs),
-            "learning_rate": float(cfg.model.learning_rate),
-            "reg_layer": cfg.model.train_method.reg_layer,
-            "reg_mode": cfg.model.train_method.reg_mode,
-            "train_method": cfg.model.train_method.type,
-            "batch_size": int(cfg.model.train_method.batch_size),
+            "outer_fold": outer_fold,#identification
+            "epochs": int(cfg.model.epochs),#train parameter
+            "learning_rate": float(cfg.model.learning_rate),#train parameter
+            "loss_func": cfg.model.train_method.loss,#train parameter
+            "reg_layer": cfg.model.train_method.reg_layer,#train parameter
+            "reg_mode": cfg.model.train_method.reg_mode,#train parameter
+            "train_method": cfg.model.train_method.type,#train parameter
+            "batch_size": int(cfg.model.train_method.batch_size),#train parameter
+            "input_size": input_size,#model architecture parameter
+            "hidden_info": cfg.model.model_info.hidden_info,#model architecture parameter
+            "output_size": output_size,#model architecture parameter
+            "activ_info": cfg.model.model_info.activ_info,#model architecture parameter
+            "method_init": cfg.model.model_info.method_init,#model architecture parameter
         },
         settings=wandb.Settings(
             init_timeout=cfg.logger.get("init_timeout", 180),
@@ -69,8 +81,9 @@ def start_wandb_run_in_cv(cfg: DictConfig, outer_fold:int):
         reinit=True,
     )
     #returning wandb run object
-    return run#currently not used, but leaving for structure and possible future use
-def start_wandb_run_out(cfg: DictConfig, outer_fold:int, lamb: float):
+    return run
+#function for starting wandb run for specific outer fold with best lambda value from inner loop of cross-validation (to log training curves information)
+def start_wandb_run_out(cfg: DictConfig, outer_fold:int, lamb: float, input_size: int, output_size: int):
     #starting wandb run for current configuration
     run = wandb.init(
         #setting up wandb info for run identification and organization in the dashboard
@@ -80,14 +93,20 @@ def start_wandb_run_out(cfg: DictConfig, outer_fold:int, lamb: float):
         mode=cfg.logger.get("mode", "online"),
         #config part of wandb info
         config={
-            "outer_fold": outer_fold,
-            "lambda": lamb,
-            "epochs": int(cfg.model.epochs),
-            "learning_rate": float(cfg.model.learning_rate),
-            "reg_layer": cfg.model.train_method.reg_layer,
-            "reg_mode": cfg.model.train_method.reg_mode,
-            "train_method": cfg.model.train_method.type,
-            "batch_size": int(cfg.model.train_method.batch_size),
+            "outer_fold": outer_fold,#identification
+            "lambda": lamb,#identification and train parameter
+            "epochs": int(cfg.model.epochs),#train parameter
+            "learning_rate": float(cfg.model.learning_rate),#train parameter
+            "loss_func": cfg.model.train_method.loss,#train parameter
+            "reg_layer": cfg.model.train_method.reg_layer,#train parameter
+            "reg_mode": cfg.model.train_method.reg_mode,#train parameter
+            "train_method": cfg.model.train_method.type,#train parameter
+            "batch_size": int(cfg.model.train_method.batch_size),#train parameter
+            "input_size": input_size,#model architecture parameter
+            "hidden_info": cfg.model.model_info.hidden_info,#model architecture parameter
+            "output_size": output_size,#model architecture parameter
+            "activ_info": cfg.model.model_info.activ_info,#model architecture parameter
+            "method_init": cfg.model.model_info.method_init,#model architecture parameter
         },
         settings=wandb.Settings(
             init_timeout=cfg.logger.get("init_timeout", 180),
@@ -99,8 +118,9 @@ def start_wandb_run_out(cfg: DictConfig, outer_fold:int, lamb: float):
         reinit=True,
     )
     #returning wandb run object
-    return run#currently not used, but leaving for structure and possible future use
-def start_wandb_run_out_cv(cfg: DictConfig):
+    return run
+#function for starting wandb run for the whole cv process (to log overall results of cv and best lambda values across folds)
+def start_wandb_run_out_cv(cfg: DictConfig, input_size: int, output_size: int):
     #starting wandb run for current configuration
     run = wandb.init(
         #setting up wandb info for run identification and organization in the dashboard
@@ -110,12 +130,18 @@ def start_wandb_run_out_cv(cfg: DictConfig):
         mode=cfg.logger.get("mode", "online"),
         #config part of wandb info
         config={
-            "epochs": int(cfg.model.epochs),
-            "learning_rate": float(cfg.model.learning_rate),
-            "reg_layer": cfg.model.train_method.reg_layer,
-            "reg_mode": cfg.model.train_method.reg_mode,
-            "train_method": cfg.model.train_method.type,
-            "batch_size": int(cfg.model.train_method.batch_size),
+            "epochs": int(cfg.model.epochs),#train parameter
+            "learning_rate": float(cfg.model.learning_rate),#train parameter
+            "loss_func": cfg.model.train_method.loss,#train parameter
+            "reg_layer": cfg.model.train_method.reg_layer,#train parameter
+            "reg_mode": cfg.model.train_method.reg_mode,#train parameter
+            "train_method": cfg.model.train_method.type,#train parameter
+            "batch_size": int(cfg.model.train_method.batch_size),#train parameter
+            "input_size": input_size,#model architecture parameter
+            "hidden_info": cfg.model.model_info.hidden_info,#model architecture parameter
+            "output_size": output_size,#model architecture parameter
+            "activ_info": cfg.model.model_info.activ_info,#model architecture parameter
+            "method_init": cfg.model.model_info.method_init,#model architecture parameter
         },
         settings=wandb.Settings(
             init_timeout=cfg.logger.get("init_timeout", 180),
@@ -128,12 +154,10 @@ def start_wandb_run_out_cv(cfg: DictConfig):
     )
     #returning wandb run object
     return run#currently not used, but leaving for structure and possible future use
+#helper function for logging training and validation loss curves for each epoch in wandb, to be called at the end of each epoch during training (needed due to the wandb logging structure)
 def log_epoch_curves(loss_train:list, loss_val:list, prefix: str = "") -> None:
-    #
-    train_losses = loss_train
-    val_losses   = loss_val
-    #
-    for tr, va in zip(train_losses, val_losses):
+    #iterating through epochs
+    for tr, va in zip(loss_train, loss_val):
         wandb.log(
             {
                 f"{prefix}train/loss": float(tr),
@@ -163,7 +187,7 @@ def main(cfg: DictConfig) -> None:
     lambdas = cfg.model.lambdas
     epochs = cfg.model.epochs
     learning_rate = cfg.model.learning_rate
-    #
+    #getting sweeping configuration
     log_freq = cfg.search.log_freq
     seed_split = cfg.search.seed_split
     fold_out = cfg.search.fold_out
@@ -173,6 +197,7 @@ def main(cfg: DictConfig) -> None:
     method_init = init_from_str(method_init_str)#getting initialization method for current configuration based on string in config
     loss_info = loss_info_from_str(loss_info_str)#getting loss function and its derivative for current configuration based on string in config
     update_func = update_from_str(reg_mode)#getting update function for current configuration based on regularization mode string in config
+    #converting regularization layer information from number to list of integers for use in training loop to determine which layers are regularized and which are not (forced due to the YAML file naming)
     reg_layer = [int(c) for c in reg_layer_num]
     #if no regularization, then there is no need to hyperparameter tune lambda, so we set it to 0 for all runs in this case, to keep the same structure of the code and avoid errors in training loop where lambda is used
     if reg_mode == "None":
@@ -184,7 +209,7 @@ def main(cfg: DictConfig) -> None:
     #getting list of indices for all samples in the data, needed for splitting into folds for cross-validation
     indices = list(range(X.shape[0]))#list of indices for all samples in the data, needed for splitting into folds for cross-validation
     folds_out = KSplit(indices, n_splits=fold_out, seed=seed_split)
-    #
+    #declaring variable to store cv results
     best_lambdas_results = {}
     #outer loop of cv
     for iOutFold in range(fold_out):
@@ -200,8 +225,6 @@ def main(cfg: DictConfig) -> None:
             lamb = lambdas[iLambda]
             #inner loop for cv
             for jInFold in range(fold_in):
-                #
-                run = start_wandb_run_lamb(cfg, iOutFold, jInFold, lamb)
                 #getting train and validation sets for current fold in inner loop
                 indices_fold_in_train, indices_fold_in_val = train_test_folds(folds_in, jInFold)
                 #getting data for current fold in inner loop for training and validation based on split indices
@@ -222,30 +245,30 @@ def main(cfg: DictConfig) -> None:
                 #getting and saving validation score for current lambda and inner fold
                 val_score = loss_test[-1]
                 val_scores[iLambda, jInFold] = val_score
-                #
+                #starting wandb run for current lambda and inner fold to log training curves
+                run = start_wandb_run_lamb(cfg, iOutFold, jInFold, lamb, input_size, output_size)
+                #logging training curves for current lambda and inner fold in wandb
                 log_epoch_curves(loss_train, loss_test)
-                #
+                #finishing wandb run for current lambda and inner fold
                 run.finish()
         #getting best lambda value from inner loop
         val_scores_mean = np.mean(val_scores, axis=1)
         best_lambda_index = int(np.argmin(val_scores_mean))
         best_lambda = lambdas[best_lambda_index]
-        #
-        run = start_wandb_run_in_cv(cfg, iOutFold)
-        #
+        #starting wandb run for current outer fold to log overall results of inner loop of cv for different lambda values
+        run = start_wandb_run_in_cv(cfg, iOutFold, input_size, output_size)
+        #logging validation scores for different lambda values for current fold in cross-validation in wandb
         run.summary["val_scores_mean"] = val_scores_mean.tolist()
-        #
+        #finishing wandb run for current outer fold for inner loop results
         run.finish()
         #splitting data into train and test sets based on current fold for cross-validation
         X_train_out = X[indices_fold_out_train]
         Y_train_out = Y[indices_fold_out_train]
         X_test_out = X[indices_out_fold_test]
         Y_test_out = Y[indices_out_fold_test]
-        #
-        run =start_wandb_run_out(cfg, iOutFold, best_lambda)
-        #
+        #declaring model for current outer fold
         model = FFNN(input_size = input_size, output_size = output_size, hidden_info = hidden_info, activ_info = activ_info, method_init = method_init)#model building based on current configuration (architecture and hyperparameters) for current run in sweep
-        #
+        #training model based
         match train_method_type:
             case "GD":
                 loss_train, loss_test = train_GD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, reg_layer = reg_layer, loss_info = loss_info, update_func = update_func,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
@@ -253,36 +276,40 @@ def main(cfg: DictConfig) -> None:
                 loss_train, loss_test = train_SGD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, reg_layer = reg_layer, batch_size = batch_size, loss_info = loss_info, update_func = update_func,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
             case _:
                 raise ValueError(f"Unknown training method: {train_method_type}")
-        #
+        #saving test score for best lambda value for current fold
         best_lambdas_results[best_lambda] = loss_test[-1]
-        #
+        #starting wandb run for current outer fold to log
+        run =start_wandb_run_out(cfg, iOutFold, best_lambda, input_size, output_size)
+        #logging training curves for current outer fold in wandb
         log_epoch_curves(loss_train, loss_test)
-        #
+        #finishing wandb run for current outer fold
         run.finish()
-    #
-    run = start_wandb_run_out_cv(cfg)
-    #
+    #getting best lambda information for cv run
     best_lambda_overall_index = int(np.argmin(list(best_lambdas_results.values())))
     best_lambda_overall = list(best_lambdas_results.keys())[best_lambda_overall_index]
     best_lambda_overall_score = list(best_lambdas_results.values())[best_lambda_overall_index]
-    #
+    #getting worst lambda information for cv run
     worst_lambda_overall_index = int(np.argmax(list(best_lambdas_results.values())))
     worst_lambda_overall = list(best_lambdas_results.keys())[worst_lambda_overall_index]
     worst_lambda_overall_score = list(best_lambdas_results.values())[worst_lambda_overall_index]
-    #
+    #getting which lambda value is the most common among the best lambda values
     most_common_lambda = max(set(list(best_lambdas_results.keys())), key=list(best_lambdas_results.keys()).count)
-    #
+    most_common_lambda_score = best_lambdas_results[most_common_lambda]
+    #getting average test score across folds for best lambda values
     average_test_score = np.mean(list(best_lambdas_results.values()))
-    #
+    #starting wandb run for whole cv process to log overall results of cv and best lambda values across folds
+    run = start_wandb_run_out_cv(cfg, input_size, output_size)
+    #logging overall results of cv and best lambda values across folds in wandb
     wandb.log({
         "best_lambda_overall": best_lambda_overall, 
         "best_lambda_overall_score": best_lambda_overall_score,
         "worst_lambda_overall": worst_lambda_overall,
         "worst_lambda_overall_score": worst_lambda_overall_score,
         "most_common_lambda": most_common_lambda,
+        "most_common_lambda_score": most_common_lambda_score,
         "average_test_score": average_test_score
         })
-    #
+    #finishing wandb run for whole cv process
     run.finish()
 
 if __name__ == "__main__":
