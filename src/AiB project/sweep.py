@@ -24,6 +24,7 @@ def start_wandb_run_lamb(cfg: DictConfig, outer_fold:int, inner_fold: int, lamb:
             "lambda": lamb,
             "epochs": int(cfg.model.epochs),
             "learning_rate": float(cfg.model.learning_rate),
+            "reg_layer": cfg.model.train_method.reg_layer,
             "reg_mode": cfg.model.train_method.reg_mode,
             "train_method": cfg.model.train_method.type,
             "batch_size": int(cfg.model.train_method.batch_size),
@@ -53,6 +54,7 @@ def start_wandb_run_in_cv(cfg: DictConfig, outer_fold:int):
             "outer_fold": outer_fold,
             "epochs": int(cfg.model.epochs),
             "learning_rate": float(cfg.model.learning_rate),
+            "reg_layer": cfg.model.train_method.reg_layer,
             "reg_mode": cfg.model.train_method.reg_mode,
             "train_method": cfg.model.train_method.type,
             "batch_size": int(cfg.model.train_method.batch_size),
@@ -82,6 +84,7 @@ def start_wandb_run_out(cfg: DictConfig, outer_fold:int, lamb: float):
             "lambda": lamb,
             "epochs": int(cfg.model.epochs),
             "learning_rate": float(cfg.model.learning_rate),
+            "reg_layer": cfg.model.train_method.reg_layer,
             "reg_mode": cfg.model.train_method.reg_mode,
             "train_method": cfg.model.train_method.type,
             "batch_size": int(cfg.model.train_method.batch_size),
@@ -109,6 +112,7 @@ def start_wandb_run_out_cv(cfg: DictConfig):
         config={
             "epochs": int(cfg.model.epochs),
             "learning_rate": float(cfg.model.learning_rate),
+            "reg_layer": cfg.model.train_method.reg_layer,
             "reg_mode": cfg.model.train_method.reg_mode,
             "train_method": cfg.model.train_method.type,
             "batch_size": int(cfg.model.train_method.batch_size),
@@ -124,7 +128,7 @@ def start_wandb_run_out_cv(cfg: DictConfig):
     )
     #returning wandb run object
     return run#currently not used, but leaving for structure and possible future use
-def log_epoch_curves(loss_train:list, loss_val:list, prefix: str = "", start_epoch: int = 1) -> None:
+def log_epoch_curves(loss_train:list, loss_val:list, prefix: str = "") -> None:
     #
     train_losses = loss_train
     val_losses   = loss_val
@@ -154,6 +158,7 @@ def main(cfg: DictConfig) -> None:
     train_method_type = cfg.model.train_method.type
     batch_size = cfg.model.train_method.batch_size
     loss_info_str = cfg.model.train_method.loss
+    reg_layer_num = cfg.model.train_method.reg_layer  # e.g. "1010"
     reg_mode = cfg.model.train_method.reg_mode
     lambdas = cfg.model.lambdas
     epochs = cfg.model.epochs
@@ -168,6 +173,7 @@ def main(cfg: DictConfig) -> None:
     method_init = init_from_str(method_init_str)#getting initialization method for current configuration based on string in config
     loss_info = loss_info_from_str(loss_info_str)#getting loss function and its derivative for current configuration based on string in config
     update_func = update_from_str(reg_mode)#getting update function for current configuration based on regularization mode string in config
+    reg_layer = [int(c) for c in reg_layer_num]
     #if no regularization, then there is no need to hyperparameter tune lambda, so we set it to 0 for all runs in this case, to keep the same structure of the code and avoid errors in training loop where lambda is used
     if reg_mode == "None":
         lambdas = [0]
@@ -208,9 +214,9 @@ def main(cfg: DictConfig) -> None:
                 #training model based on given method
                 match train_method_type:
                     case "GD":
-                        loss_train, loss_test = train_GD(model, X_train_in, Y_train_in, X_val_in, Y_val_in, loss_info = loss_info, update_func = update_func,lambda_= lamb, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
+                        loss_train, loss_test = train_GD(model, X_train_in, Y_train_in, X_val_in, Y_val_in, reg_layer = reg_layer, loss_info = loss_info, update_func = update_func,lambda_= lamb, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
                     case "SGD":
-                        loss_train, loss_test = train_SGD(model, X_train_in, Y_train_in, X_val_in, Y_val_in, batch_size = batch_size, loss_info = loss_info, update_func = update_func,lambda_= lamb, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
+                        loss_train, loss_test = train_SGD(model, X_train_in, Y_train_in, X_val_in, Y_val_in, reg_layer = reg_layer, batch_size = batch_size, loss_info = loss_info, update_func = update_func,lambda_= lamb, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
                     case _:
                         raise ValueError(f"Unknown training method: {train_method_type}")
                 #getting and saving validation score for current lambda and inner fold
@@ -227,12 +233,6 @@ def main(cfg: DictConfig) -> None:
         #
         run = start_wandb_run_in_cv(cfg, iOutFold)
         #
-        wandb.log({
-            "best_lambda": best_lambda, 
-            "best_lambda_score": val_scores_mean[best_lambda_index],
-            "lambda_0_score": val_scores_mean[0], #score for lambda = 0, i.e. no regularization, for comparison
-            })
-        #
         run.summary["val_scores_mean"] = val_scores_mean.tolist()
         #
         run.finish()
@@ -248,9 +248,9 @@ def main(cfg: DictConfig) -> None:
         #
         match train_method_type:
             case "GD":
-                loss_train, loss_test = train_GD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, loss_info = loss_info, update_func = update_func,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
+                loss_train, loss_test = train_GD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, reg_layer = reg_layer, loss_info = loss_info, update_func = update_func,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
             case "SGD":
-                loss_train, loss_test = train_SGD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, batch_size = batch_size, loss_info = loss_info, update_func = update_func,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
+                loss_train, loss_test = train_SGD(model, X_train_out, Y_train_out, X_test_out, Y_test_out, reg_layer = reg_layer, batch_size = batch_size, loss_info = loss_info, update_func = update_func,lambda_= best_lambda, learning_rate = learning_rate, epochs = epochs, log_freq = log_freq)
             case _:
                 raise ValueError(f"Unknown training method: {train_method_type}")
         #
@@ -270,6 +270,8 @@ def main(cfg: DictConfig) -> None:
     worst_lambda_overall = list(best_lambdas_results.keys())[worst_lambda_overall_index]
     worst_lambda_overall_score = list(best_lambdas_results.values())[worst_lambda_overall_index]
     #
+    most_common_lambda = max(set(list(best_lambdas_results.keys())), key=list(best_lambdas_results.keys()).count)
+    #
     average_test_score = np.mean(list(best_lambdas_results.values()))
     #
     wandb.log({
@@ -277,6 +279,7 @@ def main(cfg: DictConfig) -> None:
         "best_lambda_overall_score": best_lambda_overall_score,
         "worst_lambda_overall": worst_lambda_overall,
         "worst_lambda_overall_score": worst_lambda_overall_score,
+        "most_common_lambda": most_common_lambda,
         "average_test_score": average_test_score
         })
     #

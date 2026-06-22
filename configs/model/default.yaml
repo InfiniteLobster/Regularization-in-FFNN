@@ -5,6 +5,7 @@ model_info:
 train_method:
   type: "SGD" #options: "GD", "SGD"
   loss: "mse_loss"
+  reg_layer: [1, 1, 1, 1] #1 for regularized layer, 0 for non-regularized layer, length should be equal to number of layers (including output layer)
   reg_mode: "None" #options: "None", "L1", "L2"
   batch_size: 32
 epochs: 10

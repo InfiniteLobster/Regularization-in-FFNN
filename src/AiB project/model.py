@@ -52,7 +52,7 @@ class FFNN:
             A.append(a)
         #returning output
         return A
-    def backward(self, A: list, loss_derivative: np.ndarray, update_func: callable, learning_rate: float, lambda_: float = 0) -> None:
+    def backward(self, A: list, loss_derivative: np.ndarray, update_func: callable,reg_layer:list, learning_rate: float, lambda_: float = 0) -> None:
         #calculating delta for output layer
         delta = loss_derivative * self.dactiv_list[-1](A[-1])
         #iterating through layers in reverse order for backpropagation
@@ -66,7 +66,10 @@ class FFNN:
             grad_weights = delta.T @ a
             grad_biases = np.sum(delta, axis=0, keepdims=True)
             #updating weights and biases using gradients (here we can add learning rate and regularization)
-            self.weights_list[i] -= update_func(grad_weights, learning_rate, self.weights_list[i], lambda_)
+            if(reg_layer[i] == 1):
+                self.weights_list[i] -= update_func(grad_weights, learning_rate, self.weights_list[i], lambda_)
+            else:
+                self.weights_list[i] -= standard(grad_weights, learning_rate, self.weights_list[i], lambda_)
             self.biases_list[i] -= standard(grad_biases, learning_rate, self.biases_list[i], lambda_) #biases are not regularized, only weights
             #calculating delta for previous layer (except for input layer)
             if i > 0:
