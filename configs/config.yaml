@@ -10,4 +10,4 @@ hydra:
     params:
       model.train_method.type: SGD
       model.train_method.reg_layer: 0000,1111
-      logger.project: Test7
+      logger.project: Test8

@@ -2,7 +2,7 @@
 import numpy as np
 #------------------Py files code------------------#
 from init import init_zero, init_xavier_uniform
-from activ import relu, sigmoid, relu_derivative, sigmoid_derivative
+from activ import relu, sigmoid, relu_derivative, sigmoid_derivative, linear, linear_derivative
 from loss import mse_loss, mse_loss_derivative
 from update import standard, reg_L1, reg_L2
 #--------------------Functions--------------------#
@@ -66,6 +66,9 @@ def activ_from_str(activ_str: str) -> tuple[callable, callable]:
         case "sigmoid":
             activ = sigmoid
             activ_deriv = sigmoid_derivative
+        case "linear":
+            activ = linear
+            activ_deriv = linear_derivative
         case _:
             raise ValueError(f"Unknown activation function: {activ_str}")
     #
@@ -95,17 +98,3 @@ def loss_info_from_str(loss_info_str: str) -> list:
             raise ValueError(f"Unknown loss function: {loss_info_str}")
     #
     return [loss_func, loss_derivative]
-#
-def update_from_str(reg_mode_str: str) -> callable:
-    #
-    match reg_mode_str:
-        case "None":
-            update_func = standard
-        case "L1":
-            update_func = reg_L1
-        case "L2":
-            update_func = reg_L2
-        case _:
-            raise ValueError(f"Unknown regularization mode: {reg_mode_str}")
-    #
-    return update_func

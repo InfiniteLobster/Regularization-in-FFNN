@@ -1,8 +1,8 @@
 #--------------------Libraries--------------------#
 #hydra
 import hydra
-from omegaconf import DictConfig, OmegaConf
-from hydra.core.hydra_config import HydraConfig
+from omegaconf import DictConfig
+from sklearn.metrics import accuracy_score,precision_recall_curve, auc, average_precision_score
 #wandb
 import wandb
 #data handling
@@ -194,7 +194,7 @@ def main(cfg: DictConfig) -> None:
     from data import load_data
     from train import train_GD, train_SGD
     from model import FFNN
-    from utils import KSplit, train_test_folds, init_from_str, activ_info_from_str_list, loss_info_from_str, update_from_str
+    from utils import KSplit, train_test_folds, init_from_str, activ_info_from_str_list, loss_info_from_str
     from loss import mse_loss
     #------------------main code------------------#
     #getting model configuration
@@ -264,8 +264,8 @@ def main(cfg: DictConfig) -> None:
                     case _:
                         raise ValueError(f"Unknown training method: {train_method_type}")
                 #getting and saving validation score for current lambda and inner fold
-                val_score = loss_test[-1]
-                val_scores[iLambda, jInFold] = val_score
+                loss_val = loss_test[-1]
+                val_scores[iLambda, jInFold] = loss_val
                 #starting wandb run for current lambda and inner fold to log
                 run = start_wandb_run_lamb(cfg, iOutFold, jInFold, lamb, input_size, output_size)
                 #logging data
@@ -306,29 +306,29 @@ def main(cfg: DictConfig) -> None:
         #finishing wandb run for current outer fold
         run.finish()
     #getting best lambda information for cv run
-    best_lambda_overall_index = int(np.argmin(list(best_lambdas_results.values())))
-    best_lambda_overall = list(best_lambdas_results.keys())[best_lambda_overall_index]
-    best_lambda_overall_score = list(best_lambdas_results.values())[best_lambda_overall_index]
+    best_lambda_index = int(np.argmin(list(best_lambdas_results.values())))
+    best_lambda = list(best_lambdas_results.keys())[best_lambda_index]
+    best_lambda_loss= list(best_lambdas_results.values())[best_lambda_index]
     #getting worst lambda information for cv run
-    worst_lambda_overall_index = int(np.argmax(list(best_lambdas_results.values())))
-    worst_lambda_overall = list(best_lambdas_results.keys())[worst_lambda_overall_index]
-    worst_lambda_overall_score = list(best_lambdas_results.values())[worst_lambda_overall_index]
+    worst_lambda_index = int(np.argmax(list(best_lambdas_results.values())))
+    worst_lambda = list(best_lambdas_results.keys())[worst_lambda_index]
+    worst_lambda_loss = list(best_lambdas_results.values())[worst_lambda_index]
     #getting which lambda value is the most common among the best lambda values
     most_common_lambda = max(set(list(best_lambdas_results.keys())), key=list(best_lambdas_results.keys()).count)
-    most_common_lambda_score = best_lambdas_results[most_common_lambda]
-    #getting average test score across folds for best lambda values
-    average_test_score = np.mean(list(best_lambdas_results.values()))
+    most_common_lambda_loss = best_lambdas_results[most_common_lambda]
+    #getting average test loss across folds for best lambda values
+    average_test_loss_score = np.mean(list(best_lambdas_results.values()))
     #starting wandb run for whole cv process to log overall results of cv and best lambda values across folds
     run = start_wandb_run_out_cv(cfg, input_size, output_size)
     #logging overall results of cv and best lambda values across folds in wandb
     wandb.log({
-        "best_lambda_overall": best_lambda_overall, 
-        "best_lambda_overall_score": best_lambda_overall_score,
-        "worst_lambda_overall": worst_lambda_overall,
-        "worst_lambda_overall_score": worst_lambda_overall_score,
-        "most_common_lambda": most_common_lambda,
-        "most_common_lambda_score": most_common_lambda_score,
-        "average_test_score": average_test_score
+        "best lambda": best_lambda, 
+        "best lambda loss": best_lambda_loss,
+        "worst lambda": worst_lambda,
+        "worst lambda loss": worst_lambda_loss,
+        "most common lambda": most_common_lambda,
+        "most common lambda loss": most_common_lambda_loss,
+        "average test loss score": average_test_loss_score
         })
     #finishing wandb run for whole cv process
     run.finish()

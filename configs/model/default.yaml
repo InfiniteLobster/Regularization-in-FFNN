@@ -1,6 +1,6 @@
 model_info:
   hidden_info: [128, 64, 32]
-  activ_info: ["relu","relu","relu","sigmoid"]
+  activ_info: ["relu","relu","relu","linear"]
   method_init: "xavier_uniform" #options: "zero", "xavier_uniform"
 train_method:
   type: "SGD" #options: "GD", "SGD"

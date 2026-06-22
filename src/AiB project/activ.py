@@ -36,3 +36,12 @@ def relu_derivative(a: np.ndarray) -> np.ndarray:
                          0)
     #returning output
     return rel_deriv
+#
+def linear(z: np.ndarray) -> np.ndarray:
+    #linear activation function is just identity function
+    a = z
+    return a
+def linear_derivative(a: np.ndarray) -> np.ndarray:
+    #derivative of linear activation function is just 1
+    a_deriv = np.ones_like(a)
+    return a_deriv  
