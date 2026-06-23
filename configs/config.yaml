@@ -12,4 +12,4 @@ hydra:
       model.model_info.activ_info: '["relu","relu","relu","linear"]'
       model.train_method.type: SGD
       model.train_method.reg_layer: '[0,0,0,0],[1,1,1,1],[2,2,2,2],[0,0,0,1],[0,0,0,2],[1,1,1,0],[2,2,2,0],[1,1,1,2],[2,2,2,1]'
-      logger.project: Regularization-layers
+      logger.project: Regularization-layers-2
