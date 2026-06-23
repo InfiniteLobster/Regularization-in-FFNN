@@ -8,8 +8,8 @@ hydra:
   mode: MULTIRUN
   sweeper:
     params:
-      model.model_info.hidden_info: '[64,32],[32,64],[128,64],[64,128],[16,8],[8,16]'
-      model.model_info.activ_info: '["relu","relu","linear"]'
+      model.model_info.hidden_info: '[64,128,256]'
+      model.model_info.activ_info: '["relu","relu","relu","linear"]'
       model.train_method.type: SGD
-      model.train_method.reg_layer: [0,0,0]
-      logger.project: Architectures
+      model.train_method.reg_layer: '[0,0,0,0],[1,1,1,1],[2,2,2,2],[0,0,0,1],[0,0,0,2],[1,1,1,0],[2,2,2,0],[1,1,1,2],[2,2,2,1]'
+      logger.project: Regularization-layers
