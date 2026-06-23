@@ -8,7 +8,7 @@ hydra:
   mode: MULTIRUN
   sweeper:
     params:
-      model.model_info.hidden_info: '[64,32],[32,64],[128,64],[64,128],[16,8],[8,16]'
+      model.model_info.hidden_info: '[128,64,32],[32,64,128],[256,128,64],[64,128,256],[32,16,8],[8,16,32]'
       model.model_info.activ_info: '["relu","relu","linear"]'
       model.train_method.type: SGD
       model.train_method.reg_layer: [0,0,0]
